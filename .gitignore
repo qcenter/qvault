@@ -1,0 +1,5 @@
+node_modules/
+*.log
+upstream/sdk-core/
+upstream/mpc-wasm/
+upstream/.sdk-commit

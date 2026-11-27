@@ -1,0 +1,18 @@
+{
+  "date": "2026-11-26",
+  "build": "0.3.0",
+  "backend": "Rust WASM + original Go validation",
+  "samples_ms": [
+    8332,
+    3525,
+    18597
+  ],
+  "result": "All samples passed Go independent safe-prime validation and one-use prepared DKG init",
+  "scope": "local Node worker harness; not an actual browser, no live QKMS, no credentials, no private material recorded",
+  "limitations": "Fresh random search; only three exploratory samples; second/third overlapped Go worker. No reliable speedup factor claimed.",
+  "go_comparison": {
+    "status": "not_finished_within_180_seconds",
+    "deadline_ms": 180000,
+    "scope": "same actual WASM harness, independent randomness; no completion timing or numeric speedup ratio available"
+  }
+}

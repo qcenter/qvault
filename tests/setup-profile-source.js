@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import {IDBFactory} from 'fake-indexeddb';
+import {SetupProfile} from '../src/setup-profile.js';
+import {ProfileStore} from '../src/profile-store.js';
+import {fixtureKey,fixtureSecret,fixtureUnlock,fixtureProfile} from './fixture-profile.js';
+import {sealProfile,openProfile} from '../src/profile-crypto.js';
+const password='FICTIONAL SETUP PASSKEY LABEL';const record=await sealProfile({fixture:'FICTIONAL_PRIVATE_SETUP_DATA'},await fixtureKey(password));
+const store=new ProfileStore(new IDBFactory());let held=false,releases=0;const setup=new SetupProfile({store,lease:async()=>{assert.equal(held,false);held=true;return()=>{held=false;releases++}}});
+assert.equal(await setup.read(),null);await assert.rejects(()=>setup.backup(),/No saved profile/);
+const file=new File([JSON.stringify(record)],'fictional-encrypted-profile.json',{type:'application/json'});await setup.restore(file);assert.equal(held,false);assert.equal(releases,1);assert.deepEqual(await setup.read(),record);const backup=await setup.backup();assert.ok(!backup.includes('FICTIONAL_PRIVATE_SETUP_DATA'));assert.deepEqual(JSON.parse(backup),record);assert.equal((await openProfile(JSON.parse(backup),fixtureSecret(password))).payload.fixture,'FICTIONAL_PRIVATE_SETUP_DATA');
+const originalRevision=(await setup.read()).revision;await assert.rejects(()=>setup.restore(file),/Profile changed/);assert.equal((await setup.read()).revision,originalRevision);assert.equal(held,false);assert.equal(releases,2);
+await assert.rejects(()=>setup.restore(new File(['not-json'],'invalid.json')),SyntaxError);await assert.rejects(()=>setup.restore({size:9*1024*1024,text:async()=>JSON.stringify(record)}),/smaller than/);assert.equal((await setup.read()).revision,originalRevision);
+console.log('PASS LOCAL: real encrypted backup export/import through fake IndexedDB, no decryption during management, exact record preserved and decryptable afterwards, existing profile never overwritten, malformed/oversized files rejected and exclusive lease released on failure. Fictional data only, no network.');
+
+const deviceBefore=await store.getDeviceId();
+await assert.rejects(()=>setup.reset({revision:originalRevision,secret:fixtureSecret(password),confirmation:'reset',acknowledged:true}),/Type RESET/);assert.equal((await setup.read()).revision,originalRevision);
+await assert.rejects(()=>setup.reset({revision:originalRevision,secret:fixtureSecret('FICTIONAL_WRONG_PASSWORD'),confirmation:'RESET',acknowledged:true}),/does not open/);assert.equal((await setup.read()).revision,originalRevision);assert.equal(held,false);
+const next=await sealProfile({fixture:'FICTIONAL_NEWER_DATA'},await fixtureKey(password));await store.save(next,originalRevision);await assert.rejects(()=>store.reset(originalRevision),/Profile changed/);assert.equal((await setup.read()).revision,next.revision);assert.equal(await store.getDeviceId(),deviceBefore);
+await setup.reset({revision:next.revision,secret:fixtureSecret(password),confirmation:'RESET',acknowledged:true});assert.equal(await setup.read(),null);assert.notEqual(await store.getDeviceId(),deviceBefore);assert.equal(held,false);await setup.restore(file);assert.deepEqual(await setup.read(),record);
+const denied=new SetupProfile({store,lease:async()=>{throw Error('QVault is already unlocked in another tab')}});await assert.rejects(()=>denied.reset({revision:record.revision,secret:fixtureSecret(password),confirmation:'RESET',acknowledged:true}),/already unlocked/);assert.deepEqual(await setup.read(),record);
+console.log('PASS LOCAL: reset requires exact confirmation, acknowledgement and the right passkey secret; stale-revision and active-session denial preserve profile and device ID; confirmed reset atomically clears only local profile/device ID and allows backup restore. Fake IndexedDB and fictional data only; no user data/cloud touched.');

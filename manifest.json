@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyNOqxOH85mCR4L2BhwH0MVKbnCf3bDE2YcZ5qH/XyxiB+cdqgzZ2Jm+tsdvKG7v1xqPvsTejPDSZCBXTuoytWzy640nAl7mPZeo7ySNMVZ7HnvID3lL2DRcgCRWkI3wPiGGqWSc0f38B5vm2CzRrg/JHm96f59uY1W9fz3xK8paD5ziLIhX/5XOxcw435zNpH222umBV6/vkJBreOVlONhHWmvDaKh/y5XI0Ypgiu9lZyZLQnl5vnyArDxbLvdshd2RVpdq07DxpDSzuYyvks0/51jbr/jT62HCbENinCEVgXB6Hb0mzNfqjUark0V7r3QmtI+5f6kBFAH368FR4ywIDAQAB",
+  "name": "QVault",
+  "version": "0.49.0",
+  "description": "Experimental password manager on Quilibrium (QStorage and QKMS). Unofficial and unaudited; try it with test data.",
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "QVault",
+    "default_icon": {
+      "16": "assets/icons/locked-16.png",
+      "32": "assets/icons/locked-32.png",
+      "48": "assets/icons/locked-48.png",
+      "128": "assets/icons/locked-128.png"
+    }
+  },
+  "host_permissions": [
+    "https://qkms.quilibrium.com/*",
+    "https://qstorage.quilibrium.com/*"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'none'; connect-src 'self' https://qkms.quilibrium.com https://qstorage.quilibrium.com https://qping.quilibrium.com https://qq.quilibrium.com; worker-src 'self'"
+  },
+  "minimum_chrome_version": "116",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "offscreen",
+    "idle"
+  ],
+  "icons": {
+    "16": "assets/icons/icon-16.png",
+    "32": "assets/icons/icon-32.png",
+    "48": "assets/icons/icon-48.png",
+    "128": "assets/icons/icon-128.png"
+  },
+  "optional_host_permissions": [
+    "https://*/*"
+  ]
+}

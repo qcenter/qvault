@@ -1,0 +1,101 @@
+--- upstream/channel-wasm/src/lib.rs
++++ patched/channel-wasm/src/lib.rs
+@@ -261,7 +261,7 @@
+   let json: Result<SenderX3DH, serde_json::Error> = serde_json::from_str(input);
+   match json {
+     Ok(params) => {
+-      return sender_x3dh(&params.sending_identity_private_key, &params.sending_ephemeral_private_key, &params.receiving_identity_key, &params.receiving_signed_pre_key, params.session_key_length);
++      return sender_x3dh(&params.sending_identity_private_key, &params.sending_ephemeral_private_key, &params.receiving_identity_key, &params.receiving_signed_pre_key, params.session_key_length as u64);
+     }
+     Err(e) => {
+       return e.to_string();
+@@ -274,7 +274,7 @@
+   let json: Result<ReceiverX3DH, serde_json::Error> = serde_json::from_str(input);
+   match json {
+     Ok(params) => {
+-      return receiver_x3dh(&params.sending_identity_private_key, &params.sending_signed_private_key, &params.receiving_identity_key, &params.receiving_ephemeral_key, params.session_key_length);
++      return receiver_x3dh(&params.sending_identity_private_key, &params.sending_signed_private_key, &params.receiving_identity_key, &params.receiving_ephemeral_key, params.session_key_length as u64);
+     }
+     Err(e) => {
+       return e.to_string();
+@@ -475,7 +475,7 @@
+   let json: Result<DoubleRatchetStateAndMessage, serde_json::Error> = serde_json::from_str(params);
+   match json {
+     Ok(ratchet_state_and_message) => {
+-      return serde_json::to_string(&double_ratchet_encrypt(ratchet_state_and_message)).unwrap_or_else(|e| e.to_string());
++      return match double_ratchet_encrypt(ratchet_state_and_message) { Ok(value) => serde_json::to_string(&value).unwrap_or_else(|e| e.to_string()), Err(error) => serde_json::json!({"error":error.to_string()}).to_string() };
+     }
+     Err(e) => {
+       return e.to_string();
+@@ -488,7 +488,7 @@
+   let json: Result<DoubleRatchetStateAndEnvelope, serde_json::Error> = serde_json::from_str(params);
+   match json {
+     Ok(ratchet_state_and_envelope) => {
+-      return serde_json::to_string(&double_ratchet_decrypt(ratchet_state_and_envelope)).unwrap_or_else(|e| e.to_string());
++      return match double_ratchet_decrypt(ratchet_state_and_envelope) { Ok(value) => serde_json::to_string(&value).unwrap_or_else(|e| e.to_string()), Err(error) => serde_json::json!({"error":error.to_string()}).to_string() };
+     }
+     Err(e) => {
+       return e.to_string();
+@@ -514,7 +514,7 @@
+   let json: Result<TripleRatchetStateAndMetadata, serde_json::Error> = serde_json::from_str(params);
+   match json {
+     Ok(ratchet_state_and_metadata) => {
+-      return serde_json::to_string(&triple_ratchet_init_round_1(ratchet_state_and_metadata)).unwrap_or_else(|e| e.to_string());
++      return match triple_ratchet_init_round_1(ratchet_state_and_metadata) { Ok(value) => serde_json::to_string(&value).unwrap_or_else(|e| e.to_string()), Err(error) => serde_json::json!({"error":error.to_string()}).to_string() };
+     }
+     Err(e) => {
+       return e.to_string();
+@@ -527,7 +527,7 @@
+   let json: Result<TripleRatchetStateAndMetadata, serde_json::Error> = serde_json::from_str(params);
+   match json {
+     Ok(ratchet_state_and_metadata) => {
+-      return serde_json::to_string(&triple_ratchet_init_round_2(ratchet_state_and_metadata)).unwrap_or_else(|e| e.to_string());
++      return match triple_ratchet_init_round_2(ratchet_state_and_metadata) { Ok(value) => serde_json::to_string(&value).unwrap_or_else(|e| e.to_string()), Err(error) => serde_json::json!({"error":error.to_string()}).to_string() };
+     }
+     Err(e) => {
+       return e.to_string();
+@@ -540,7 +540,7 @@
+   let json: Result<TripleRatchetStateAndMetadata, serde_json::Error> = serde_json::from_str(params);
+   match json {
+     Ok(ratchet_state_and_metadata) => {
+-      return serde_json::to_string(&triple_ratchet_init_round_3(ratchet_state_and_metadata)).unwrap_or_else(|e| e.to_string());
++      return match triple_ratchet_init_round_3(ratchet_state_and_metadata) { Ok(value) => serde_json::to_string(&value).unwrap_or_else(|e| e.to_string()), Err(error) => serde_json::json!({"error":error.to_string()}).to_string() };
+     }
+     Err(e) => {
+       return e.to_string();
+@@ -553,7 +553,7 @@
+   let json: Result<TripleRatchetStateAndMetadata, serde_json::Error> = serde_json::from_str(params);
+   match json {
+     Ok(ratchet_state_and_metadata) => {
+-      return serde_json::to_string(&triple_ratchet_init_round_4(ratchet_state_and_metadata)).unwrap_or_else(|e| e.to_string());
++      return match triple_ratchet_init_round_4(ratchet_state_and_metadata) { Ok(value) => serde_json::to_string(&value).unwrap_or_else(|e| e.to_string()), Err(error) => serde_json::json!({"error":error.to_string()}).to_string() };
+     }
+     Err(e) => {
+       return e.to_string();
+@@ -566,7 +566,7 @@
+   let json: Result<TripleRatchetStateAndMessage, serde_json::Error> = serde_json::from_str(params);
+   match json {
+     Ok(ratchet_state_and_message) => {
+-      return serde_json::to_string(&triple_ratchet_encrypt(ratchet_state_and_message)).unwrap_or_else(|e| e.to_string());
++      return match triple_ratchet_encrypt(ratchet_state_and_message) { Ok(value) => serde_json::to_string(&value).unwrap_or_else(|e| e.to_string()), Err(error) => serde_json::json!({"error":error.to_string()}).to_string() };
+     }
+     Err(e) => {
+       return e.to_string();
+@@ -579,7 +579,7 @@
+   let json: Result<TripleRatchetStateAndEnvelope, serde_json::Error> = serde_json::from_str(params);
+   match json {
+     Ok(ratchet_state_and_envelope) => {
+-      return serde_json::to_string(&triple_ratchet_decrypt(ratchet_state_and_envelope)).unwrap_or_else(|e| e.to_string());
++      return match triple_ratchet_decrypt(ratchet_state_and_envelope) { Ok(value) => serde_json::to_string(&value).unwrap_or_else(|e| e.to_string()), Err(error) => serde_json::json!({"error":error.to_string()}).to_string() };
+     }
+     Err(e) => {
+       return e.to_string();
+@@ -592,7 +592,7 @@
+   let json: Result<ResizeRequest, serde_json::Error> = serde_json::from_str(params);
+   match json {
+     Ok(request) => {
+-      return serde_json::to_string(&triple_ratchet_resize(request.ratchet_state, request.other, request.id, request.total)).unwrap_or_else(|e| e.to_string());
++      return serde_json::to_string(&triple_ratchet_resize(request.ratchet_state, request.other, request.id as u64, request.total as u64)).unwrap_or_else(|e| e.to_string());
+     }
+     Err(e) => {
+       return e.to_string();

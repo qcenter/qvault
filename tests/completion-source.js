@@ -1,0 +1,27 @@
+import assert from 'node:assert/strict';
+import {RSASession,rsaCompletionMetadata} from '../upstream/sdk-core/sidecar/sessions/rsa.ts';
+const n=Buffer.alloc(256,1).toString('base64'),e=Buffer.from([1,0,1]).toString('base64'),secret=Buffer.from('SYNTHETIC_PRIVATE_SHARE_NEVER_SEND').toString('base64');
+const complete=rsaCompletionMetadata({n,e,dShare:secret});assert.equal(complete.complete,true);assert.deepEqual(JSON.parse(Buffer.from(complete.publicKey,'base64').toString()),{n,e});assert.ok(!JSON.stringify(complete).includes(secret));assert.equal(complete.privateKey,undefined);
+assert.throws(()=>rsaCompletionMetadata({n:'AQ==',e}),/Invalid/);
+const session=new RSASession();let stored=false,wasmCalls=0;const submissions=[];
+session.apiPromise=Promise.resolve({rsa_dkg_round:()=>{wasmCalls++;return JSON.stringify({complete:true,publicKeyN:n,publicKeyE:e,privShare:secret})}});
+session.onKeyShareReady=async(_id,json)=>{assert.equal(JSON.parse(json).dShare,secret);stored=true};
+const task={TaskId:'fictional-task',KeyId:'fictional-key',Operation:'CreateKey',KeySpec:'RSA_2048',Round:9,ServerData:{partyIDMap:{a:1,b:2},partyContributions:{b:{data:{phase:8,toParty:0}}}}};
+const ctx={sidecarId:'a',client:{updateTask:async m=>submissions.push(m)}};
+await session.process(task,ctx);assert.equal(stored,true);assert.equal(submissions.length,1);assert.equal(submissions[0].ClientData.publicKey,complete.publicKey);assert.ok(!JSON.stringify(submissions).includes(secret));assert.equal(submissions[0].ClientData.privateKey,undefined);
+await session.process(task,ctx);assert.equal(wasmCalls,1);assert.equal(submissions[1].ClientData.publicKey,complete.publicKey);
+const firstRound=new RSASession();firstRound.requirePrepared=true;let initRequest;
+firstRound.apiPromise=Promise.resolve({rsa_dkg_init:json=>{initRequest=JSON.parse(json);return JSON.stringify({data:Buffer.from(JSON.stringify({phase:1,fromParty:1,toParty:0})).toString('base64')})}});
+await firstRound.process({...task,Round:0},ctx);assert.equal(initRequest.requirePrepared,true);assert.equal(initRequest.partyId,1);
+console.log('PASS: fresh/cached DKG completion includes public n/e metadata; private share only reaches local storage callback, never UpdateTask. Mocked protocol output; live server acceptance unverified.');
+
+const exported=rsaCompletionMetadata({n,e,dShare:secret},true);
+assert.deepEqual(JSON.parse(Buffer.from(exported.privateKey,'base64').toString()),{dShare:secret,n,e});
+assert.throws(()=>rsaCompletionMetadata({n,e},true),/Missing/);
+const opted=new RSASession();opted.exportPrivateShareForTest=true;
+opted.apiPromise=Promise.resolve({rsa_dkg_round:()=>JSON.stringify({complete:true,publicKeyN:n,publicKeyE:e,privShare:secret})});
+const sent=[];const optCtx={sidecarId:'a',client:{updateTask:async m=>sent.push(m)}};
+await opted.process(task,optCtx);await opted.process(task,optCtx);
+assert.equal(sent.length,2);
+for(const m of sent)assert.deepEqual(JSON.parse(Buffer.from(m.ClientData.privateKey,'base64').toString()),{dShare:secret,n,e});
+console.log('PASS: explicit synthetic-test opt-in sends base64 JSON n/e/dShare in fresh and cached completion; default remains public-only. Mocked network only.');

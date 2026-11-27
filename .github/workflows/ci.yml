@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      # Every committed file must match the recorded checksum.
+      - name: Verify SHA256SUMS
+        run: sha256sum --check --quiet SHA256SUMS
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      # First test exactly what is committed (the prebuilt dist/ is what users load).
+      - name: Test committed build
+        run: npm test
+
+      # Then rebuild from source and fail if a committed bundle no longer matches it.
+      - name: Rebuild and check committed bundles are current
+        run: |
+          npm run build
+          node build-tests.mjs
+          if ! git diff --exit-code --stat -- dist tests; then
+            echo "::error::Committed bundles are out of date. Run 'npm run build && node build-tests.mjs' and commit the result."
+            exit 1
+          fi
+
+      - name: Test rebuilt sources
+        run: npm test
+
+      # Real Chromium with the unpacked extension, a virtual passkey and a local stand-in for cloud storage.
+      - name: Install Chromium for browser tests
+        run: npx playwright install --with-deps chromium
+
+      - name: Browser tests
+        run: npm run test:e2e

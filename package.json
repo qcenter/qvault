@@ -1,0 +1,35 @@
+{
+  "name": "qvault",
+  "version": "0.49.0",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "scripts": {
+    "build": "node build/fetch-sdk.mjs && node build.mjs",
+    "test": "node tests/run-all.mjs",
+    "test:rsa": "node tests/rsa-smoke.mjs && node tests/oaep-smoke.mjs",
+    "test:channel": "node tests/channel-smoke.mjs",
+    "test:prepare": "node tests/prepare-smoke.mjs && node tests/preparation-phase-smoke.mjs",
+    "test:profile": "node tests/passkey-profile-smoke.mjs && node tests/local-key-smoke.mjs && node tests/profile-smoke.mjs && node tests/restore-smoke.mjs && node tests/cloud-vault-smoke.mjs",
+    "test:browser": "node tests/browser-runtime-smoke.mjs && node tests/hosted-runtime-smoke.mjs && node tests/browser-broker-smoke.mjs && node tests/fill-form-smoke.mjs && node tests/popup-smoke.mjs && node tests/offscreen-auth-smoke.mjs && node tests/inline-smoke.mjs && node tests/inline-clobber-smoke.mjs && node tests/field-words-smoke.mjs && node tests/popup-invalid-url-smoke.mjs && node tests/popup-passkey-smoke.mjs && node tests/site-access-smoke.mjs && node tests/unlock-broker-smoke.mjs && node tests/unlock-ui-smoke.mjs",
+    "test:sync": "node tests/sync-smoke.mjs && node tests/snapshot-discovery-smoke.mjs && node tests/retention-smoke.mjs && node tests/snapshot-cache-smoke.mjs",
+    "test:setup": "node tests/setup-profile-smoke.mjs && node tests/setup-ui-smoke.mjs && node tests/setup-vault-smoke.mjs && node tests/onboarding-ui-smoke.mjs && node tests/onboarding-qkms-ui-smoke.mjs",
+    "test:bucket": "node tests/bucket-setup-smoke.mjs",
+    "test:diagnostics": "node tests/diagnostics-smoke.mjs && node tests/passkey-check-smoke.mjs",
+    "test:icons": "node tests/icons-smoke.mjs",
+    "test:package": "node tests/package-smoke.mjs",
+    "test:e2e": "node tests/e2e/vault.e2e.mjs && node tests/e2e/pages.e2e.mjs && node tests/e2e/devices.e2e.mjs"
+  },
+  "dependencies": {
+    "esbuild": "0.25.12",
+    "@noble/curves": "1.9.7",
+    "@noble/hashes": "1.8.0",
+    "@scure/base": "1.2.6",
+    "idb": "8.0.3",
+    "aws4fetch": "1.0.20"
+  },
+  "devDependencies": {
+    "fake-indexeddb": "6.2.4",
+    "playwright": "1.63.0"
+  }
+}

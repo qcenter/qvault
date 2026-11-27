@@ -1,0 +1,14 @@
+{
+  "summary": "bounded-benchmark-expired",
+  "timeoutMs": 180000,
+  "results": [
+    {
+      "stage": "finished",
+      "partyId": 1,
+      "elapsedMs": 65403,
+      "hasContribution": true,
+      "error": false
+    }
+  ],
+  "scope": "Local bounded Node WASM init benchmark, two parallel workers, no network, no real credentials. One run only; no timing guarantee."
+}

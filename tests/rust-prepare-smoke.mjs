@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {prepareWithRust} from '../src/rust-prepare.js';
+const seeds=[],factors=[],stages=[];let calls=0;
+const args={init:async()=>{},random:a=>{a.fill(7);seeds.push(a);return a},generate:()=>{const a=new Uint8Array(128).fill(0xc3);factors.push(a);return a},api:{rsa_dkg_prepare_rust:json=>{calls++;const r=JSON.parse(json);assert.equal(Buffer.from(r.p,'base64').length,128);assert.equal(Buffer.from(r.q,'base64').length,128);return '{"ready":true}'}},progress:s=>stages.push(s)};
+assert.equal((await prepareWithRust(args)).ready,true);assert.equal(calls,1);assert.equal(stages.length,4);
+assert.ok(seeds.every(a=>a.every(x=>x===0)));assert.ok(factors.every(a=>a.every(x=>x===0)));
+await assert.rejects(()=>prepareWithRust({...args,api:{rsa_dkg_prepare_rust:()=>'{"error":"synthetic rejection"}'}}),/rejected/);
+await assert.rejects(()=>prepareWithRust({...args,generate:()=>{throw Error('synthetic failure')}}),/synthetic failure/);
+assert.ok(seeds.every(a=>a.every(x=>x===0)));assert.ok(factors.every(a=>a.every(x=>x===0)));
+await assert.rejects(()=>prepareWithRust({...args,api:{}}),/Missing/);
+console.log('PASS LOCAL: Rust preparation bridge validates output size, clears byte buffers on success/failure, propagates validation failure, and never silently falls back. Mocked factors only.');

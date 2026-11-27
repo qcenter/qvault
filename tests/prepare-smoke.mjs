@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {prepareThenCreate} from '../src/prepare.js';
+let resolveA,resolveB,created=0,events=[];
+const peer=(name,promise)=>({call:async action=>{events.push(name+':'+action);return action==='prepare'?promise:{ready:true,keySize:2048}}});
+const a=new Promise(r=>resolveA=r),b=new Promise(r=>resolveB=r);
+const pending=prepareThenCreate({peers:[peer('a',a),peer('b',b)],create:()=>{created++;return 'new-key'}});
+assert.equal(created,0);resolveB({ready:true,keySize:2048});await Promise.resolve();assert.equal(created,0);resolveA({ready:true,keySize:2048});assert.equal(await pending,'new-key');assert.equal(created,1);assert.ok(events.includes('a:prepared')&&events.includes('b:prepared'));
+created=0;const expired={call:async action=>({ready:action==='prepare',keySize:2048})};await assert.rejects(prepareThenCreate({peers:[expired],create:()=>created++}),/expired/);assert.equal(created,0);
+await assert.rejects(prepareThenCreate({peers:[{call:async()=>{throw Error('synthetic preparation failure')}}],create:()=>created++}),/synthetic/);assert.equal(created,0);
+await assert.rejects(prepareThenCreate({peers:[{call:async()=>({ready:true,keySize:2048})}],isCancelled:()=>true,create:()=>created++}),/stopped/);assert.equal(created,0);
+console.log('PASS: CreateKey callback waits for every participant and fresh readiness recheck; failed/expired/cancelled preparation cannot create a remote key. Mocked workers only.');

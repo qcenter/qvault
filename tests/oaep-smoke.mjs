@@ -1,0 +1,12 @@
+import {loadMpcWasm} from '../vendor/mpc/loader.js';
+import {readFile} from 'node:fs/promises';
+import {generateKeyPairSync,publicEncrypt,constants,randomBytes} from 'node:crypto';
+import assert from 'node:assert/strict';
+const api=await loadMpcWasm({wasmBytes:await readFile(new URL('../vendor/mpc/mpc.wasm',import.meta.url))});
+const {publicKey,privateKey}=generateKeyPairSync('rsa',{modulusLength:2048});const jwk=privateKey.export({format:'jwk'});const b64=x=>Buffer.from(x,'base64url').toString('base64');
+const original=randomBytes(32);const encrypted=publicEncrypt({key:publicKey,oaepHash:'sha256',padding:constants.RSA_PKCS1_OAEP_PADDING},original);
+const request={input:encrypted.toString('base64'),n:b64(jwk.n),dShare:b64(jwk.d),totalParties:1};
+const partial=JSON.parse(api.rsa_shoup_partial(JSON.stringify(request)));assert.ok(partial.partial);
+const result=JSON.parse(api.rsa_shoup_combine(JSON.stringify({input:request.input,n:request.n,e:b64(jwk.e),totalParties:1,partials:{'1':partial.partial},unpadOaep:'RSAES_OAEP_SHA_256'})));
+assert.deepEqual(Buffer.from(result.result,'base64'),original);
+console.log('PASS LOCAL: RSA-OAEP-SHA256 encrypted 32-byte data key recovered through actual WASM Shoup partial/combine. One-party fixture only; not live threshold DKG.');process.exit(0);

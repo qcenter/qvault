@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import {SyncTransport} from '../src/sync-transport.js';
+import {discoverSnapshot,parseSnapshotPage} from '../src/snapshot-discovery.js';
+const profileId=crypto.randomUUID(),prefix='qvault/'+profileId+'/',a=prefix+crypto.randomUUID()+'.json',b=prefix+crypto.randomUUID()+'.json';
+const item=(key,date)=>`<Contents><Key>${key}</Key><LastModified>${date}</LastModified></Contents>`;
+const page=(items,next)=>`<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">${items}<IsTruncated>${!!next}</IsTruncated>${next?'<NextContinuationToken>'+next+'</NextContinuationToken>':''}</ListBucketResult>`;
+let calls=[];const args={profileId,reference:{object:a},requestPage:async token=>{calls.push(token);return token?page(item(b,'2026-01-02T00:00:00Z')):page(item(a,'2026-01-01T00:00:00Z')+item(prefix+'sync/v1/head.json','2026-02-01T00:00:00Z'),'next&amp;page')}};
+assert.deepEqual(await discoverSnapshot(args),{object:b});assert.deepEqual(calls,[null,'next&page']);
+assert.deepEqual(await discoverSnapshot({...args,reference:null}),{object:b});
+assert.equal(await discoverSnapshot({profileId,requestPage:async()=>page('')}),null);
+await assert.rejects(()=>discoverSnapshot({...args,requestPage:async()=>page('')}),/missing/);
+await assert.rejects(()=>discoverSnapshot({...args,requestPage:async()=>page(item(a,'2026-01-01T00:00:00Z')+item(b,'2026-01-01T00:00:00Z'))}),/same date/);
+await assert.rejects(()=>discoverSnapshot({...args,requestPage:async()=>page(item(a,'2026-01-01T00:00:00Z'),'repeat')}),/pagination/);
+assert.throws(()=>parseSnapshotPage(page(item('qvault/'+crypto.randomUUID()+'/x.json','2026-01-01')),profileId),/another vault/);
+assert.throws(()=>parseSnapshotPage('<!DOCTYPE x>'+page(''),profileId),/Invalid/);
+await assert.rejects(()=>discoverSnapshot({...args,requestPage:async()=>{throw Error('HTTP 403')}}),/403/);
+console.log('PASS LOCAL: paginated snapshot discovery, old/empty-backup recovery, metadata exclusion, missing-snapshot/tie/pagination/foreign-prefix rejection. Synthetic listings only; no live service.');
+
+const credentials={bucket:'fictional-bucket',region:'q-world-1',accessKey:'FICTIONAL',secretKey:'FICTIONAL'};
+let fetched;const transport=new SyncTransport({credentials,profileId,keyId:'fictional-key',fetcher:{fetch:async(url,options)=>{fetched={url:new URL(url),options};return new Response(page(item(a,'2026-01-01T00:00:00Z')))}}});
+assert.deepEqual(await transport.latestSnapshot(null),{object:a});assert.equal(fetched.url.searchParams.get('prefix'),prefix);assert.equal(fetched.url.searchParams.get('list-type'),'2');assert.equal(fetched.options.cache,'no-store');
+transport.fetcher.fetch=async()=>new Response('',{status:403});await assert.rejects(()=>transport.latestSnapshot(null),/cannot list/);

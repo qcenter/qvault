@@ -1,0 +1,4 @@
+import {Worker} from 'node:worker_threads';
+import assert from 'node:assert/strict';
+const worker=new Worker(new URL('./preparation-phase-worker.mjs',import.meta.url));let timer,checked=false;
+try{await new Promise((resolve,reject)=>{timer=setTimeout(()=>reject(Error('No preparation phase event')),10000);worker.on('message',m=>{if(m.stage==='missing-preparation-rejected'){assert.equal(m.rejected,true);assert.equal(m.prepared,false);checked=true}if(m.stage==='offline-paillier-generation-started'){assert.equal(checked,true);resolve()}});worker.on('error',reject)});console.log('PASS: actual WASM rejects unprepared init without fallback; separate offline API starts unchanged Paillier generation with no remote task. Expensive test worker then cancelled.')}finally{clearTimeout(timer);await worker.terminate()}

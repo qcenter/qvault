@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {IDBFactory} from 'fake-indexeddb';
+import {ProfileStore} from '../src/profile-store.js';
+import {fixtureKey,fixtureSecret,fixtureUnlock,fixtureProfile} from './fixture-profile.js';
+import {sealProfile} from '../src/profile-crypto.js';
+class El{constructor(){this.value='';this.children=[];this.hidden=false;this.disabled=false;this.checked=false;this.textContent=''}append(...n){this.children.push(...n)}replaceChildren(...n){this.children=n}click(){this.onclick?.()}}
+const elements=new Map(),el=id=>{if(!elements.has(id))elements.set(id,new El());return elements.get(id)},factory=new IDBFactory(),password='FICTIONAL SETUP UI PASSKEY LABEL';
+const fx=await fixtureProfile(password),store=new ProfileStore(factory),record=await sealProfile({fixture:'FICTIONAL_SETUP_UI'},fx.handle);await store.save(record);
+const originalFetch=globalThis.fetch;
+const originalNavigator=Object.getOwnPropertyDescriptor(globalThis,'navigator');let held=false;
+globalThis.indexedDB=factory;globalThis.document={getElementById:el,createElement:()=>new El()};Object.defineProperty(globalThis,'navigator',{configurable:true,value:{locks:{request:async(_name,_options,fn)=>{if(held)return fn(null);held=true;try{return await fn({name:'fixture-ui-lock'})}finally{held=false}}}}});
+const wait=async condition=>{for(let i=0;i<200;i++){if(await condition())return;await new Promise(r=>setTimeout(r,3))}throw Error('Setup UI fixture timed out')};
+try{
+ await import('../dist/recovery.js');await wait(()=>el('profile-title').textContent==='Your vault profile is saved');assert.equal(el('restore-profile').disabled,true);assert.equal(el('reset-open').disabled,false);await el('reset-open').onclick();assert.equal(el('reset-form').hidden,false);el('reset-password').value=fx.recoveryKey;el('reset-confirm').value='RESET';el('reset-ack').checked=true;el('reset-cancel').onclick();assert.equal(el('reset-form').hidden,true);assert.equal(el('reset-password').value,'');assert.equal((await store.read()).revision,record.revision);
+ await el('reset-open').onclick();el('reset-password').value=fx.recoveryKey;el('reset-confirm').value='RESET';el('reset-ack').checked=true;el('reset-form').onsubmit({preventDefault(){}});assert.equal(el('reset-password').value,'');assert.equal(el('reset-cancel').disabled,true);await wait(()=>el('profile-title').textContent==='Set up QVault on this device');assert.equal(await store.read(),null);assert.equal(el('reset-form').hidden,true);assert.equal(el('reset-open').disabled,true);assert.equal(el('restore-profile').disabled,false);assert.match(el('profile-message').textContent,/cloud backups were not deleted/);
+ el('restore-profile').files=[new File([JSON.stringify(record)],'fictional-backup.json')];el('restore-profile').onchange();await wait(()=>el('profile-title').textContent==='Your vault profile is saved');assert.deepEqual(await store.read(),record);assert.equal(el('restore-profile').disabled,true);assert.match(el('profile-message').textContent,/Unlock with passkey/);assert.doesNotMatch(el('profile-message').textContent,/master password/);
+ console.log('PASS LOCAL: exact bundled Setup UI reviews reset, Cancel clears secret fields without deletion, confirmed reset (proven with the recovery key) clears the secret field immediately and disables Cancel during commit, transitions to empty-device setup, then restores encrypted fixture. Real crypto/fake IndexedDB and simulated DOM; no user data/network.');
+}finally{globalThis.fetch=originalFetch;delete globalThis.document;delete globalThis.indexedDB;if(originalNavigator)Object.defineProperty(globalThis,'navigator',originalNavigator);else delete globalThis.navigator}
